@@ -1,0 +1,6 @@
+# Third-party tools and downloads; recreate them as described in README.md (Setup)
+/.tools/
+# Build output (scripts/build.sh)
+/build/
+# Copies of your RIME folder made by scripts/deploy.sh; they hold your personal dictionary
+/backups/

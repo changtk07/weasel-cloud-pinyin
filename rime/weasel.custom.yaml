@@ -1,0 +1,77 @@
+# Weasel candidate window styled after the Windows 11 Traditional Chinese
+# (Taiwan) IME. Measured from a screenshot at 150% scaling; sizes are in
+# 100%-scale pixels (Weasel multiplies them by DPI/96).
+# Part of Yunpin (雲拼), installed by its scripts/deploy.sh. Edit the copy in the Yunpin repo, not here.
+patch:
+  style/color_scheme: win11_light
+  style/color_scheme_dark: win11_dark   # used while Windows is in dark mode
+  style/horizontal: false
+  style/inline_preedit: true            # composition shown in the app, not the window
+  style/preedit_type: preview           # inline text is the highlighted candidate; "composition" shows pinyin
+  style/font_face: "Microsoft JhengHei UI, Segoe UI Emoji, Segoe UI Symbol"
+  style/label_font_face: "Microsoft JhengHei UI"
+  style/comment_font_face: "Microsoft JhengHei UI, Segoe UI Symbol"
+  style/font_point: 10
+  style/label_font_point: 10
+  style/comment_font_point: 9
+  style/label_format: "%s"
+  style/mark_text: ""                   # empty + hilited_mark_color = Windows 11 accent bar
+  style/layout/min_width: 144
+  style/layout/border_width: 1
+  style/layout/margin_x: 12
+  style/layout/margin_y: 11
+  style/layout/hilite_padding_x: 7
+  style/layout/hilite_padding_y: 6
+  style/layout/hilite_spacing: 11                  # label to candidate
+  style/layout/candidate_spacing: 16               # rows 32 px apart, highlight 28 px tall
+  style/layout/spacing: 8
+  style/layout/corner_radius: 5                    # window
+  style/layout/round_corner: 4                     # highlight
+  style/layout/linespacing: 120                    # uniform row height, % of font size
+  style/layout/baseline: 100
+  style/layout/shadow_radius: 8
+  style/layout/shadow_offset_x: 0
+  style/layout/shadow_offset_y: 2
+  style/layout/align_type: center
+  # Colors are WinUI's flyout colors. The accent bar uses your accent color
+  # (#9D6820): Light2 in dark mode, Dark1 in light mode, as Windows does.
+  preset_color_schemes/win11_dark:
+    name: "Windows 11 深色"
+    color_format: argb
+    back_color: 0xFF2C2C2C
+    border_color: 0xFF232323
+    shadow_color: 0x1E000000
+    text_color: 0xFFFFFFFF
+    hilited_text_color: 0xFFFFFFFF
+    hilited_back_color: 0x00000000
+    candidate_text_color: 0xFFFFFFFF
+    candidate_back_color: 0x00000000
+    label_color: 0xFFFFFFFF
+    comment_text_color: 0xFF9D9D9D
+    hilited_candidate_text_color: 0xFFFFFFFF
+    hilited_candidate_back_color: 0xFF383838
+    hilited_label_color: 0xFFFFFFFF
+    hilited_comment_text_color: 0xFFB4B4B4
+    hilited_mark_color: 0xFFDFBB66
+    prevpage_color: 0x00000000
+    nextpage_color: 0x00000000
+  preset_color_schemes/win11_light:
+    name: "Windows 11 淺色"
+    color_format: argb
+    back_color: 0xFFF9F9F9
+    border_color: 0xFFE5E5E5
+    shadow_color: 0x24000000
+    text_color: 0xFF1B1B1B
+    hilited_text_color: 0xFF1B1B1B
+    hilited_back_color: 0x00000000
+    candidate_text_color: 0xFF1B1B1B
+    candidate_back_color: 0x00000000
+    label_color: 0xFF1B1B1B
+    comment_text_color: 0xFF8A8A8A
+    hilited_candidate_text_color: 0xFF1B1B1B
+    hilited_candidate_back_color: 0xFFF0F0F0
+    hilited_label_color: 0xFF1B1B1B
+    hilited_comment_text_color: 0xFF6E6E6E
+    hilited_mark_color: 0xFF86521A
+    prevpage_color: 0x00000000
+    nextpage_color: 0x00000000
