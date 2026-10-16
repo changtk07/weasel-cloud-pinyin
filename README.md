@@ -54,7 +54,7 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
                                   ├─ script_translator             local dictionary
                                   └─ lua_translator@*cloud_pinyin
                                        └─ cloudhttp.dll ── HTTPS ──► inputtools.google.com
-                                  filters: … ► simplifier@traditionalize (OpenCC s2tw) ► uniquifier
+                                  filters: … ► simplifier@traditionalize (OpenCC s2tw) ► … ► uniquifier
 ```
 
 ### `rime/lua/cloud_pinyin.lua`: the translator
@@ -77,7 +77,8 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
 ### `src/cloudhttp.c`: the HTTP module (`cloudhttp.dll`)
 
 - `http.get(url, timeout_ms)` returns the response body, or `nil` and one of
-  `"timeout"`, `"offline"`, `"failed"` or `"queued"` (when `timeout_ms <= 0`).
+  `"timeout"`, `"offline"`, `"failed"`, `"queued"` (when `timeout_ms <= 0`) or
+  `"unavailable"` (WinHTTP or the background thread couldn't start).
   `http.stats()` returns counters for debugging.
 - One background thread holds one WinHTTP session and keeps the TLS connection
   to Google open. A request on the open connection takes 27–79 ms; one that
@@ -85,10 +86,11 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
 - A late reply isn't aborted, because that would drop the connection. It
   finishes in the background and goes into a 256-entry cache. Only the newest
   request waits in the queue.
-- **Online/offline:** after a late reply or a failure, callers stop waiting
-  until a request succeeds again. Each key still sends its request in the
-  background, so recovery is automatic. Network timeouts are 2 s for DNS, 2 s
-  for connecting and 3 s for transfers.
+- **Online/offline:** after a key times out or a request fails, callers stop
+  waiting until a request succeeds again. That can be the late reply itself,
+  so one slow reply only skips waiting for the keys typed before it lands. Each
+  key still sends its request in the background, so recovery is automatic.
+  Network timeouts are 2 s for DNS, 2 s for connecting and 3 s for transfers.
 - It links against the Lua 5.4.7 API that Weasel's `rime.dll` exports. It
   stays loaded for the life of the process, because its thread outlives Lua
   states.
@@ -101,7 +103,7 @@ Adds the translator to rime-ice, holds its settings, and sets `s2tw` for 繁.
 
 Edit `rime/rime_ice.custom.yaml`, then run `scripts/deploy.sh`.
 
-| Setting | Default | Meaning |
+| Setting | Set to | Meaning |
 |---|---|---|
 | `cloud_pinyin/timeout_ms` | `200` | Longest a key waits for Google before showing local candidates |
 | `cloud_pinyin/count` | `5` | Google candidates per request |
@@ -109,6 +111,10 @@ Edit `rime/rime_ice.custom.yaml`, then run `scripts/deploy.sh`.
 | `cloud_pinyin/learn` | `true` | Save picked Google candidates to the user dictionary |
 | `cloud_pinyin/endpoint` | Google's | Request URL. The tests point it at a dead host to simulate being offline |
 | `traditionalize/opencc_config` | `s2tw.json` | 繁 conversion: `s2tw` characters only, `s2twp` adds Taiwan vocabulary; `s2t` and `s2hk` also work |
+
+The "Set to" column is what `rime/rime_ice.custom.yaml` sets. Without a line,
+the script falls back to a 200 ms timeout, 5 candidates, no marker and no
+learning, and 繁 uses rime-ice's own `s2t` (OpenCC standard forms, not Taiwan's).
 
 To stop using Google, remove the `engine/translators/+` entry and deploy, or
 switch to another schema with F4.
@@ -200,10 +206,16 @@ scripts/deploy.sh   # install into Weasel and redeploy
     run compiles rime-ice, which takes about a minute.
 - **`deploy.sh`** does the following:
   1. Stops WeaselServer.
-  2. Backs up your RIME folder, on the first install only.
-  3. Copies rime-ice and our files in, including `weasel.custom.yaml` (the
-     window style). It leaves out rime-ice's own `weasel.yaml`.
-  4. Puts `rime_ice` first in the schema list.
+  2. If Yunpin isn't installed yet, backs up your RIME folder to `backups/`
+     and lists which of your settings files it's about to replace.
+  3. Copies rime-ice and our files in, replacing files with the same names.
+     That includes `default.yaml`, `rime_ice.custom.yaml` and
+     `weasel.custom.yaml` (the window style). If you already use rime-ice,
+     move your own patches into `rime/rime_ice.custom.yaml` here. It leaves
+     out rime-ice's `weasel.yaml`, `squirrel.yaml` and the schemas Yunpin
+     doesn't use (double pinyin, T9).
+  4. Puts `rime_ice` first in the schema list in `default.custom.yaml`,
+     keeping your other schemas and settings there.
   5. Runs `WeaselDeployer.exe /deploy` and restarts the server.
 
 ### Things to know
@@ -235,11 +247,12 @@ scripts/deploy.sh   # install into Weasel and redeploy
 
 ## Undo
 
-The quick way is to switch to 朙月拼音·臺灣正體 in the F4 menu.
+The quick way is to switch back to the schema you used before in the F4 menu.
+Deploy keeps it in the list.
 
 To restore the RIME folder as it was before the first install, run the
 following from this directory. It deletes everything learned since then,
-including `rime_ice.userdb`.
+including `rime_ice.userdb`. It uses the oldest backup in `backups/`.
 
 ```sh
 W=$(ls -d "/mnt/c/Program Files/Rime"/weasel-* | sort -V | tail -1)

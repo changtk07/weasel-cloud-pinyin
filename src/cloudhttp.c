@@ -2,14 +2,16 @@
  * cloudhttp: HTTP GET for librime-lua scripts running inside Weasel.
  *
  * One background thread owns a WinHTTP session, so the TLS connection to the
- * cloud server stays warm between keystrokes (~70-100 ms instead of ~280 ms).
+ * cloud server stays warm between keystrokes (~30-80 ms instead of ~90-130 ms).
  * A caller waits at most `timeout_ms`. A late reply is not aborted, since that
- * would drop the warm connection: it lands in the cache instead, and callers
- * stop waiting until the network answers again (see `online`).
+ * would drop the warm connection: it lands in the cache instead. After a
+ * timeout or a failure, callers stop waiting until a request succeeds again,
+ * which can be the late reply itself (see `online`).
  *
  *   local http = require("cloudhttp")
  *   local body, err = http.get(url, timeout_ms)
  *     -- err: "timeout" | "offline" | "failed" | "queued" (timeout_ms <= 0)
+ *     --      | "unavailable" (WinHTTP or the worker thread couldn't start)
  *   http.stats()  -- { online, requests, hits, timeouts, last_ms, last_error }
  */
 #define WIN32_LEAN_AND_MEAN
@@ -58,7 +60,7 @@ static struct {
   char *pending, *inflight;
   ULONGLONG seq, pending_seq, inflight_seq, done_seq;
 
-  /* False after a failure or a late reply, until a request succeeds. */
+  /* False after a failure or a caller's timeout, until a request succeeds. */
   BOOL online;
   Entry cache[CACHE_SIZE];
   ULONGLONG tick;
