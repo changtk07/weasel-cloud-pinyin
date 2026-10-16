@@ -51,10 +51,11 @@ working; the local dictionary keeps working either way.
 
 ```
 key ─► Weasel ─► WeaselServer ─► librime + rime-ice
+                                  ├─ lua_translator@*cloud_pinyin
+                                  │    └─ cloudhttp.dll ── HTTPS ──► inputtools.google.com
                                   ├─ script_translator             local dictionary
-                                  └─ lua_translator@*cloud_pinyin
-                                       └─ cloudhttp.dll ── HTTPS ──► inputtools.google.com
-                                  filters: … ► simplifier@traditionalize (OpenCC s2tw) ► … ► uniquifier
+                                  └─ …                             rime-ice's dates, English, custom phrases
+                                  filters: lua_filter@*cloud_pinyin*filter ► … ► simplifier@traditionalize (OpenCC s2tw) ► … ► uniquifier
 ```
 
 ### `rime/lua/cloud_pinyin.lua`: the translator
@@ -67,8 +68,13 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
 - Each candidate covers Google's `matched_length` of the input, so a partial
   pick leaves the rest of the input to be converted.
 - RIME orders candidates first by how much input they cover, then by quality.
-  Quality 100 puts Google's candidates ahead of local ones covering the same
-  input.
+  Quality 100 puts Google's candidates ahead of the local dictionary's covering
+  the same input. librime compares each translator only with the next one in
+  the list, so the translator sits right before `script_translator`.
+- The file's `filter` table (`lua_filter@*cloud_pinyin*filter`, first in the
+  chain) keeps rime-ice's other candidates where rime-ice ranks them: the date
+  for `rq`, English words such as `hello`, custom phrases. Each Google
+  candidate waits for the next dictionary candidate.
 - 繁 conversion is rime-ice's own filter, so Google's and local candidates are
   converted the same way.
 - On commit, picked Google candidates are written to `rime_ice.userdb`, with
@@ -97,7 +103,8 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
 
 ### `rime/rime_ice.custom.yaml`
 
-Adds the translator to rime-ice, holds its settings, and sets `s2tw` for 繁.
+Adds the translator and filter to rime-ice, holds the settings, and sets
+`s2tw` for 繁.
 
 ## Configuration
 
@@ -116,8 +123,9 @@ The "Set to" column is what `rime/rime_ice.custom.yaml` sets. Without a line,
 the script falls back to a 200 ms timeout, 5 candidates, no marker and no
 learning, and 繁 uses rime-ice's own `s2t` (OpenCC standard forms, not Taiwan's).
 
-To stop using Google, remove the `engine/translators/+` entry and deploy, or
-switch to another schema with F4.
+To stop using Google, remove the `engine/translators/@before 1` and
+`engine/filters/@before 0` entries and deploy, or switch to another schema
+with F4.
 
 ### Window style
 
