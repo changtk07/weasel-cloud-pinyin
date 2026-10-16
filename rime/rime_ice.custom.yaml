@@ -1,0 +1,13 @@
+# Google cloud pinyin on top of rime-ice.
+# Part of Yunpin (雲拼), installed by its scripts/deploy.sh. Edit the copy in the Yunpin repo, not here.
+patch:
+  engine/translators/+:
+    - lua_translator@*cloud_pinyin
+  cloud_pinyin:
+    timeout_ms: 200   # wait at most this long for Google, then show local candidates only
+    count: 5          # cloud candidates per request
+    comment: "☁"      # marks cloud candidates; "" for none
+    learn: true       # add picked cloud candidates to the user dictionary for offline use
+  menu/page_size: 9   # like the Windows 11 IME
+  # 繁: Taiwan character forms (裡, 為, 著), mainland vocabulary kept (軟件 stays 軟件).
+  traditionalize/opencc_config: s2tw.json
