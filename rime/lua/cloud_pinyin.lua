@@ -193,4 +193,32 @@ function M.fini(env)
   env.memory = nil
 end
 
+-- Ordering. librime merges translators by comparing each one only with the
+-- next in the list, so rime_ice.custom.yaml puts this translator right before
+-- script_translator, where a cloud candidate goes ahead of the dictionary's
+-- covering the same input. That also puts it ahead of what rime-ice ranks
+-- above the dictionary (dates for rq, English words, custom phrases), so this
+-- filter, first in the chain, holds each cloud candidate back until the next
+-- dictionary candidate. Table translators' completions count as dictionary
+-- too; they rank low anyway.
+local dictionary_types = { phrase = true, user_phrase = true, sentence = true, completion = true }
+
+M.filter = {}
+
+function M.filter.func(input)
+  local held = {}
+  for cand in input:iter() do
+    if cand.type == "cloud" then
+      held[#held + 1] = cand
+    else
+      if dictionary_types[cand.type] then
+        for _, c in ipairs(held) do yield(c) end
+        held = {}
+      end
+      yield(cand)
+    end
+  end
+  for _, c in ipairs(held) do yield(c) end
+end
+
 return M

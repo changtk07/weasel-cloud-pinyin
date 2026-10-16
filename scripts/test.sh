@@ -65,6 +65,11 @@ rime | all)
   check '*1. 我們去公園 ☁' schema rime_ice keys '{Control+Shift+dollar}' type womenqugongyuan show select 1
   echo "== partial pick, then Google for the rest"
   check '*1. 公园 ☁' schema rime_ice type womenqugongyuan select 2 show select 1
+  echo "== Google first when other translators match too (English completions of lan)"
+  check '*1. 蓝 ☁' schema rime_ice type lan show
+  echo "== rime-ice's own picks stay ahead of Google: the date for rq, English for hello"
+  check "*1. $(date +%Y-%m-%d)" schema rime_ice type rq show
+  check '*1. hello' schema rime_ice type hello show
 
   echo "== offline: local only, no waiting"
   set_endpoint $NOWHERE

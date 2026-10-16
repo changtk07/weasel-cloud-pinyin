@@ -1,8 +1,11 @@
 # Google cloud pinyin on top of rime-ice.
 # Part of Yunpin (雲拼), installed by its scripts/deploy.sh. Edit the copy in the Yunpin repo, not here.
 patch:
-  engine/translators/+:
-    - lua_translator@*cloud_pinyin
+  # Right before script_translator (index 1 in rime-ice): librime compares each
+  # translator only with the next one, so Google must sit next to the dictionary.
+  engine/translators/@before 1: lua_translator@*cloud_pinyin
+  # Keeps dates, English and custom phrases where rime-ice ranks them.
+  engine/filters/@before 0: lua_filter@*cloud_pinyin*filter
   cloud_pinyin:
     timeout_ms: 200   # wait at most this long for Google, then show local candidates only
     count: 5          # cloud candidates per request
