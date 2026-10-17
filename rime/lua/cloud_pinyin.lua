@@ -5,7 +5,8 @@
 -- network, only the local dictionary is used. Candidates are Simplified, and
 -- simplifier@traditionalize converts them like every other candidate.
 -- With cloud_pinyin/learn, a picked cloud candidate goes into the user
--- dictionary, so it comes up offline too.
+-- dictionary, so it comes up offline too, and so does a word made of several
+-- picks that includes one.
 --
 -- HTTP is done by cloudhttp.dll (next to this file), which keeps the
 -- connection warm on a background thread.
@@ -116,20 +117,50 @@ local function load_http()
   return require("cloudhttp")
 end
 
--- Add picked cloud candidates to the user dictionary. Runs on commit: when the
--- last pick completes the input, the engine commits and clears the composition
--- before select_notifier reaches us.
+-- A picked candidate's pinyin as the user dictionary stores it ("ni hao "), or
+-- nil. Cloud candidates carry Google's. Dictionary candidates are decoded from
+-- their syllables, so abbreviations and corrected typos get the real pinyin.
+local function pinyin(env, cand)
+  if cand.type == "cloud" then
+    return cand.preedit ~= "" and cand.preedit .. " " or nil
+  end
+  local phrase = cand:to_phrase()
+  if phrase and phrase.lang_name == env.memory.lang_name then
+    local syllables = env.memory:decode(phrase.code)
+    if #syllables > 0 then return table.concat(syllables, " ") .. " " end
+  end
+end
+
+local function save(env, text, code)
+  local entry = DictEntry()
+  entry.text = text
+  entry.custom_code = code
+  env.memory:update_userdict(entry, 1, "")
+end
+
+-- Add picked cloud candidates to the user dictionary, and words made of
+-- several picks if one of them is a cloud candidate. RIME learns words made of
+-- dictionary picks only. A word with a pick that has no pinyin (English, a
+-- date) isn't learned. Runs on commit: when the last pick completes the input,
+-- the engine commits and clears the composition before select_notifier
+-- reaches us.
 local function learn(env, ctx)
+  local text, code, picks, cloud = "", "", 0, false
   for _, seg in ipairs(ctx.composition:toSegmentation():get_segments()) do
     local cand = (seg.status == "kSelected" or seg.status == "kConfirmed") and seg:get_selected_candidate()
     cand = cand and cand:get_genuine()
-    if cand and cand.type == "cloud" and cand.preedit ~= "" then
-      local entry = DictEntry()
-      entry.text = cand.text
-      entry.custom_code = cand.preedit .. " "
-      env.memory:update_userdict(entry, 1, "")
+    local py = cand and pinyin(env, cand)
+    if cand and cand.type == "cloud" and py then
+      save(env, cand.text, py)
+      cloud = true
+    end
+    if not py then
+      code = nil
+    elseif code then
+      text, code, picks = text .. cand.text, code .. py, picks + 1
     end
   end
+  if code and picks > 1 and cloud then save(env, text, code) end
 end
 
 function M.init(env)

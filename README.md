@@ -36,8 +36,10 @@ What to expect (times measured on the development machine):
   the order can briefly flicker.
 - **Offline:** local candidates only, with no waiting (0–6 ms per key).
 - **Partial picks:** pick 我们 out of 我们去公园 and Google converts the rest.
-- **Learning:** a Google candidate you pick is saved to your local user
-  dictionary, so it comes up offline too.
+- **Learning:** whatever you pick is saved to your local user dictionary, so
+  it comes up offline too. That includes a word neither Google nor the
+  dictionary has, built from several picks (泥 then 好 for `nihao`). Online it
+  comes after Google's candidates for the whole input; offline it's first.
 - **繁:** Taiwan character forms (裡, 為, 著急). Vocabulary isn't changed
   (软件 → 軟件); type `ruanti` for 軟體.
 - **Mid-syllable:** Google's guess can look odd (`womenqugon` → 我们去个噢你)
@@ -78,7 +80,12 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
 - 繁 conversion is rime-ice's own filter, so Google's and local candidates are
   converted the same way.
 - On commit, picked Google candidates are written to `rime_ice.userdb`, with
-  Google's pinyin as the code.
+  Google's pinyin as the code. RIME learns a word made of several dictionary
+  picks by itself, but not one that includes a Google pick, so the script
+  saves those. Dictionary picks get their pinyin from their syllables, not
+  from what you typed, so abbreviations and corrected typos are saved
+  correctly. A word with a pick that has no pinyin, such as an English word,
+  isn't saved.
 
 ### `src/cloudhttp.c`: the HTTP module (`cloudhttp.dll`)
 
@@ -115,7 +122,7 @@ Edit `rime/rime_ice.custom.yaml`, then run `scripts/deploy.sh`.
 | `cloud_pinyin/timeout_ms` | `200` | Longest a key waits for Google before showing local candidates |
 | `cloud_pinyin/count` | `5` | Google candidates per request |
 | `cloud_pinyin/comment` | `"☁"` | Marker on Google's candidates; `""` for none |
-| `cloud_pinyin/learn` | `true` | Save picked Google candidates to the user dictionary |
+| `cloud_pinyin/learn` | `true` | Save picked Google candidates, and words that include one, to the user dictionary |
 | `cloud_pinyin/endpoint` | Google's | Request URL. The tests point it at a dead host to simulate being offline |
 | `traditionalize/opencc_config` | `s2tw.json` | 繁 conversion: `s2tw` characters only, `s2twp` adds Taiwan vocabulary; `s2t` and `s2hk` also work |
 
@@ -239,7 +246,7 @@ scripts/deploy.sh   # install into Weasel and redeploy
 - Don't point `rimetest` at your live RIME folder. Weasel holds the lock on
   the user dictionary, and the test would write into your data.
 - RIME notices changed files by timestamps with 1-second resolution, so
-  `test.sh` forces a deploy after editing settings.
+  `test.sh` waits a second before editing settings and forces a deploy after.
 
 ## Troubleshooting
 
