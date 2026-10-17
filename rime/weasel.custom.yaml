@@ -7,7 +7,7 @@ patch:
   style/color_scheme_dark: win11_dark   # used while Windows is in dark mode
   style/horizontal: false
   style/inline_preedit: true            # composition shown in the app, not the window
-  style/preedit_type: preview           # inline text is the highlighted candidate; "composition" shows pinyin
+  style/preedit_type: composition       # inline text is the pinyin; "preview" shows the highlighted candidate
   style/font_face: "Microsoft JhengHei UI, Segoe UI Emoji, Segoe UI Symbol"
   style/label_font_face: "Microsoft JhengHei UI"
   style/comment_font_face: "Microsoft JhengHei UI, Segoe UI Symbol"
