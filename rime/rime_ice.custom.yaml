@@ -12,5 +12,9 @@ patch:
     comment: "☁"      # marks cloud candidates; "" for none
     learn: true       # add picked cloud candidates to the user dictionary for offline use
   menu/page_size: 9   # like the Windows 11 IME
+  # Name the punctuation switch in the F4 menu (rime-ice shows ¥ → $).
+  # Ctrl+Shift+3 toggles it.
+  switches/@1/states: ["中文標點", "英文標點"]
+  switches/@1/abbrev: ["。", "."]
   # 繁: Taiwan character forms (裡, 為, 著), mainland vocabulary kept (軟件 stays 軟件).
   traditionalize/opencc_config: s2tw.json
