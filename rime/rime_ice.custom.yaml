@@ -16,5 +16,8 @@ patch:
   # Ctrl+Shift+3 toggles it.
   switches/@1/states: ["中文標點", "英文標點"]
   switches/@1/abbrev: ["。", "."]
+  # Punctuation after a digit is full-width like anywhere else. rime-ice keeps
+  # , . : half-width there until the next key (3.1, or 3。 by pressing . twice).
+  punctuator/digit_separators: ""
   # 繁: Taiwan character forms (裡, 為, 著), mainland vocabulary kept (軟件 stays 軟件).
   traditionalize/opencc_config: s2tw.json
