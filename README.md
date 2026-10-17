@@ -45,6 +45,9 @@ What to expect (times measured on the development machine):
   (软件 → 軟件); type `ruanti` for 軟體.
 - **Mid-syllable:** Google's guess can look odd (`womenqugon` → 我们去个噢你)
   until you finish the syllable.
+- **After a digit:** `,` `.` `:` are full-width like anywhere else (`3。`).
+  rime-ice's digit separators, which hold them half-width for numbers like
+  3.14, are off; switch to English punctuation (Ctrl+Shift+3) for those.
 
 **Privacy:** while you compose, the pinyin you type is sent to
 `inputtools.google.com`. The service is undocumented and could change or stop
