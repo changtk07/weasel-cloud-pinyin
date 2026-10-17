@@ -36,9 +36,11 @@ check() {
 }
 
 # Change the cloud endpoint, e.g. to a host that doesn't resolve to simulate no
-# network. Run rime with "deploy" afterwards: RIME's change detection has
-# 1-second resolution and can miss an edit made right after a build.
+# network. Run rime with "deploy" afterwards. RIME compares file times in whole
+# seconds, so an edit in the same second as the last one looks like no change:
+# wait a second first.
 set_endpoint() {
+  sleep 1
   sed -i "/endpoint:/d; s|^  cloud_pinyin:\$|  cloud_pinyin:\n    endpoint: $1|" "$DEV/user/rime_ice.custom.yaml"
 }
 GOOGLE=https://inputtools.google.com/request
@@ -82,6 +84,16 @@ rime | all)
   check '*1. 元神 ☁' deploy schema rime_ice type yuanshen show select 1
   set_endpoint $NOWHERE
   check '*1. 元神' deploy schema rime_ice type yuanshen show
+  echo "== learning a word neither has: 泥 ☁ + 好 ☁ online, then 泥好 is first offline"
+  set_endpoint $GOOGLE
+  check 'commit: 泥好' deploy schema rime_ice type nihao select 6 select 1
+  set_endpoint $NOWHERE
+  check '*1. 泥好' deploy schema rime_ice type nihao show
+  echo "== a local pick typed as an abbreviation keeps its pinyin: 未来机会 (wljh) + 奥 ☁"
+  set_endpoint $GOOGLE
+  check 'commit: 未来机会奥' deploy schema rime_ice type wljhao select 6 select 1
+  set_endpoint $NOWHERE
+  check '*1. 未来机会奥' deploy schema rime_ice type weilaijihuiao show
 
   set_endpoint $GOOGLE
   rime deploy >/dev/null
