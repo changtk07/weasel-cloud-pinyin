@@ -147,9 +147,9 @@ ones are WinUI's standard light values.
 - The bar uses the author's Windows accent color (`#9D6820`): its Light2 shade
   in dark mode, Dark1 in light mode. To match your own accent color, update
   `hilited_mark_color` in both schemes.
-- The composition is shown in the app, as the highlighted candidate
-  (`preedit_type: preview`). To see the pinyin you typed instead, set
-  `style/preedit_type: composition`.
+- The composition is shown in the app, as the pinyin you typed
+  (`preedit_type: composition`). To see the highlighted candidate there
+  instead, like the Microsoft IME, set `style/preedit_type: preview`.
 - Text size is `style/font_point` (10 matches the Microsoft IME).
 - Weasel can't draw the Microsoft IME's bottom toolbar or scroll dots.
 
