@@ -67,6 +67,11 @@ rime | all)
   check '*1. 我們去公園 ☁' schema rime_ice keys '{Control+Shift+dollar}' type womenqugongyuan show select 1
   echo "== partial pick, then Google for the rest"
   check '*1. 公园 ☁' schema rime_ice type womenqugongyuan select 2 show select 1
+  echo "== the input box shows what you typed, split like Google's pinyin, with '"
+  check 'preedit: w' schema rime_ice type w show
+  check "preedit: w'l'j'h" schema rime_ice type wljh show
+  check "preedit: wo'men" schema rime_ice type women show
+  check "preedit: xi'an" schema rime_ice type "xi'an" show
   echo "== Google first when other translators match too (English completions of lan)"
   check '*1. 蓝 ☁' schema rime_ice type lan show
   echo "== rime-ice's own picks stay ahead of Google: the date for rq, English for hello"
@@ -76,6 +81,8 @@ rime | all)
   echo "== offline: local only, no waiting"
   set_endpoint $NOWHERE
   check '*1. 我们去公园' deploy schema rime_ice type womenqugongyuan show
+  echo "== the dictionary's candidates get ' too"
+  check "preedit: w'm" schema rime_ice type wm show
 
   echo "== learning: pick Google's 元神 online, then it's first offline too"
   rm -rf "$DEV/user/rime_ice.userdb" # the test folder's, starts empty

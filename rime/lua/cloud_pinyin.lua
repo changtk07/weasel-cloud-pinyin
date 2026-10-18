@@ -117,18 +117,44 @@ local function load_http()
   return require("cloudhttp")
 end
 
+-- Google's pinyin for the cloud candidates of the current input, for learning.
+-- It isn't kept in the candidate's preedit, which the input box shows: for w
+-- it's "wo", for wljh "wang luo ji hua".
+local function cloud_key(cand)
+  return cand._start .. " " .. cand._end .. " " .. cand.text
+end
+
 -- A picked candidate's pinyin as the user dictionary stores it ("ni hao "), or
--- nil. Cloud candidates carry Google's. Dictionary candidates are decoded from
+-- nil. Cloud candidates use Google's. Dictionary candidates are decoded from
 -- their syllables, so abbreviations and corrected typos get the real pinyin.
 local function pinyin(env, cand)
   if cand.type == "cloud" then
-    return cand.preedit ~= "" and cand.preedit .. " " or nil
+    local py = env.cloud_pinyin[cloud_key(cand)]
+    return py and py .. " "
   end
   local phrase = cand:to_phrase()
   if phrase and phrase.lang_name == env.memory.lang_name then
     local syllables = env.memory:decode(phrase.code)
     if #syllables > 0 then return table.concat(syllables, " ") .. " " end
   end
+end
+
+-- What was typed for a cloud candidate, split into syllables where Google's
+-- pinyin splits it, like the dictionary's candidates: wm with "wo men" is
+-- "w m". Uses only typed letters; nil if they don't line up with Google's.
+local function split(typed, annotation, delimiter)
+  local parts, pos = {}, 1
+  for syllable in annotation:gmatch("[a-z]+") do
+    if typed:sub(pos, pos) == "'" then pos = pos + 1 end
+    if pos > #typed then break end
+    local n = 0
+    while n < #syllable and typed:byte(pos + n) == syllable:byte(n + 1) do n = n + 1 end
+    if n == 0 then return nil end
+    parts[#parts + 1] = typed:sub(pos, pos + n - 1)
+    pos = pos + n
+  end
+  if pos <= #typed then return nil end
+  return table.concat(parts, delimiter)
 end
 
 local function save(env, text, code)
@@ -161,6 +187,7 @@ local function learn(env, ctx)
     end
   end
   if code and picks > 1 and cloud then save(env, text, code) end
+  env.cloud_pinyin = {}
 end
 
 function M.init(env)
@@ -170,6 +197,8 @@ function M.init(env)
   env.timeout = config:get_int(ns .. "/timeout_ms") or 200
   env.count = config:get_int(ns .. "/count") or 5
   env.comment = config:get_string(ns .. "/comment") or ""
+  local delimiter = config:get_string("speller/delimiter") or ""
+  env.delimiter = delimiter ~= "" and delimiter:sub(1, 1) or " "
 
   local ok, http = pcall(load_http)
   if not ok then
@@ -180,6 +209,7 @@ function M.init(env)
 
   if config:get_bool(ns .. "/learn") then
     env.memory = Memory(env.engine, env.engine.schema)
+    env.cloud_pinyin = {}
     env.on_commit = env.engine.context.commit_notifier:connect(function(ctx) learn(env, ctx) end)
   end
 end
@@ -212,7 +242,10 @@ function M.func(input, seg, env)
       cand.quality = 100
       local annotation = annotations[i]
       if type(annotation) == "string" and annotation:find("^[a-z]+[a-z ]*$") then
-        cand.preedit = annotation
+        if env.cloud_pinyin then env.cloud_pinyin[cloud_key(cand)] = annotation end
+        -- Otherwise the input box shows the input as is.
+        local preedit = split(input:sub(1, length), annotation, env.delimiter)
+        if preedit then cand.preedit = preedit end
       end
       yield(cand)
     end
@@ -250,6 +283,21 @@ function M.filter.func(input)
     end
   end
   for _, c in ipairs(held) do yield(c) end
+end
+
+-- Show ' between syllables in the input box (w'm, wo'men), as Microsoft and
+-- Google Pinyin do. Near the end of the chain: rime-ice's filters expect the
+-- spaces that its speller/delimiter puts there, so that stays a space.
+M.apostrophes = {}
+
+function M.apostrophes.func(input)
+  for cand in input:iter() do
+    local genuine = cand:get_genuine()
+    if genuine.preedit:find(" ", 1, true) then
+      genuine.preedit = genuine.preedit:gsub(" ", "'")
+    end
+    yield(cand)
+  end
 end
 
 return M
