@@ -6,6 +6,10 @@ patch:
   engine/translators/@before 1: lua_translator@*cloud_pinyin
   # Keeps dates, English and custom phrases where rime-ice ranks them.
   engine/filters/@before 0: lua_filter@*cloud_pinyin*filter
+  # ' between syllables in the input box (w'm), like Microsoft Pinyin. Remove
+  # this line for rime-ice's spaces. Before uniquifier, which has to stay last:
+  # a Lua filter after it reads ahead, and duplicates get through.
+  engine/filters/@before last: lua_filter@*cloud_pinyin*apostrophes
   cloud_pinyin:
     timeout_ms: 200   # wait at most this long for Google, then show local candidates only
     count: 5          # cloud candidates per request

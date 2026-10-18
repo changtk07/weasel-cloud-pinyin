@@ -61,7 +61,7 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
                                   │    └─ cloudhttp.dll ── HTTPS ──► inputtools.google.com
                                   ├─ script_translator             local dictionary
                                   └─ …                             rime-ice's dates, English, custom phrases
-                                  filters: lua_filter@*cloud_pinyin*filter ► … ► simplifier@traditionalize (OpenCC s2tw) ► … ► uniquifier
+                                  filters: lua_filter@*cloud_pinyin*filter ► … ► simplifier@traditionalize (OpenCC s2tw) ► … ► lua_filter@*cloud_pinyin*apostrophes ► uniquifier
 ```
 
 ### `rime/lua/cloud_pinyin.lua`: the translator
@@ -83,6 +83,15 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
   candidate waits for the next dictionary candidate.
 - 繁 conversion is rime-ice's own filter, so Google's and local candidates are
   converted the same way.
+- The input box shows only letters you typed. A Google candidate's are split
+  into syllables where Google's pinyin splits them, like the dictionary's:
+  `wm` for 我们 shows `w'm`, not `wo'men`. If they don't line up, the input
+  is shown as typed.
+- The `apostrophes` filter puts `'` between syllables in the input box, as
+  Microsoft and Google Pinyin do. rime-ice's own filters expect spaces there,
+  so the speller still uses spaces and this filter runs near the end, just
+  before `uniquifier`. A Lua filter after `uniquifier` would let duplicates
+  through, because it reads ahead.
 - On commit, picked Google candidates are written to `rime_ice.userdb`, with
   Google's pinyin as the code. RIME learns a word made of several dictionary
   picks by itself, but not one that includes a Google pick, so the script
@@ -114,7 +123,7 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
 
 ### `rime/rime_ice.custom.yaml`
 
-Adds the translator and filter to rime-ice, holds the settings, and sets
+Adds the translator and filters to rime-ice, holds the settings, and sets
 `s2tw` for 繁.
 
 ## Configuration
@@ -136,7 +145,8 @@ learning, and 繁 uses rime-ice's own `s2t` (OpenCC standard forms, not Taiwan's
 
 To stop using Google, remove the `engine/translators/@before 1` and
 `engine/filters/@before 0` entries and deploy, or switch to another schema
-with F4.
+with F4. For rime-ice's spaces between syllables instead of `'`, remove the
+`engine/filters/@before last` entry.
 
 ### Window style
 
@@ -151,8 +161,8 @@ ones are WinUI's standard light values.
 - The bar uses the author's Windows accent color (`#9D6820`): its Light2 shade
   in dark mode, Dark1 in light mode. To match your own accent color, update
   `hilited_mark_color` in both schemes.
-- The composition is shown in the app, as the pinyin you typed
-  (`preedit_type: composition`). To see the highlighted candidate there
+- The composition is shown in the app, as the pinyin you typed with `'`
+  between syllables (`preedit_type: composition`). To see the highlighted candidate there
   instead, like the Microsoft IME, set `style/preedit_type: preview`.
 - Text size is `style/font_point` (10 matches the Microsoft IME).
 - Weasel can't draw the Microsoft IME's bottom toolbar or scroll dots.
