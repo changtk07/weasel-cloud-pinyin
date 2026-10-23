@@ -3,9 +3,9 @@
 Yunpin (雲拼, "cloud pinyin") puts Google's cloud pinyin (the pinyin input on
 Google Translate) inside
 [Weasel](https://github.com/rime/weasel) (小狼毫), the Windows version of RIME.
-Google's candidates come first while you're online. The local
-[rime-ice](https://github.com/iDvel/rime-ice) (雾凇拼音) dictionary takes over
-when Google is slow or you're offline. Simplified and Traditional (Taiwan
+While you're online, Google's candidates are ranked together with the local
+[rime-ice](https://github.com/iDvel/rime-ice) (雾凇拼音) dictionary's. The
+dictionary takes over when Google is slow or you're offline. Simplified and Traditional (Taiwan
 character forms) are switchable.
 
 This is a personal project, shared as is. It was built and tested on Windows 11
@@ -30,8 +30,11 @@ is remembered for new windows.
 
 What to expect (times measured on the development machine):
 
-- **Online:** Google's best guess for the whole input comes first. Each key
-  waits for Google, typically 30–75 ms.
+- **Online:** Google's and the dictionary's candidates are ranked together.
+  One both suggest comes first: for `wlj`, 王老吉 (Google's 2nd, the
+  dictionary's 3rd) beats 王立军 (Google's 1st). On a tie Google's wins, so
+  its best guess for a whole sentence usually comes first. Each key waits for
+  Google, typically 30–75 ms.
 - **Google is slow:** after `timeout_ms` (200 ms) the key shows local
   candidates instead. Google's come back on a later key once it answers, so
   the order can briefly flicker.
@@ -81,6 +84,13 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
   chain) keeps rime-ice's other candidates where rime-ice ranks them: the date
   for `rq`, English words such as `hello`, custom phrases. Each Google
   candidate waits for the next dictionary candidate.
+- With `rank: blend`, the same filter then ranks Google's and the dictionary's
+  candidates covering the same input together (reciprocal rank fusion). Each
+  scores `cloud_weight / (blend_k + its place in Google's list)` plus
+  `1 / (blend_k + its place in the dictionary's)`, so one both suggest scores
+  twice. Ties go to Google. The dictionary's first 10 candidates for that input
+  take part; the rest follow in rime-ice's order. Blending only reorders the
+  places these candidates take, so other candidates stay where they are.
 - 繁 conversion is rime-ice's own filter, so Google's and local candidates are
   converted the same way.
 - The input box shows only letters you typed. A Google candidate's are split
@@ -136,12 +146,17 @@ Edit `rime/rime_ice.custom.yaml`, then run `scripts/deploy.sh`.
 | `cloud_pinyin/count` | `5` | Google candidates per request |
 | `cloud_pinyin/comment` | `"☁"` | Marker on Google's candidates; `""` for none |
 | `cloud_pinyin/learn` | `true` | Save picked Google candidates, and words that include one, to the user dictionary |
+| `cloud_pinyin/rank` | `blend` | `blend`: rank Google's and the dictionary's candidates together. `cloud`: Google's first |
+| `cloud_pinyin/blend_k` | `2` | With `blend`: lower favors each list's first candidates, higher favors ones both suggest |
+| `cloud_pinyin/cloud_weight` | `1` | With `blend`: weight of Google's ranking against the dictionary's (1). Above 1 favors Google |
 | `cloud_pinyin/endpoint` | Google's | Request URL. The tests point it at a dead host to simulate being offline |
 | `traditionalize/opencc_config` | `s2tw.json` | 繁 conversion: `s2tw` characters only, `s2twp` adds Taiwan vocabulary; `s2t` and `s2hk` also work |
 
 The "Set to" column is what `rime/rime_ice.custom.yaml` sets. Without a line,
-the script falls back to a 200 ms timeout, 5 candidates, no marker and no
-learning, and 繁 uses rime-ice's own `s2t` (OpenCC standard forms, not Taiwan's).
+the script falls back to a 200 ms timeout, 5 candidates, no marker, no
+learning and Google's candidates first (`blend_k` 2 and `cloud_weight` 1 if
+`blend` is set without them), and 繁 uses rime-ice's own `s2t` (OpenCC
+standard forms, not Taiwan's).
 
 To stop using Google, remove the `engine/translators/@before 1` and
 `engine/filters/@before 0` entries and deploy, or switch to another schema
@@ -230,8 +245,9 @@ scripts/deploy.sh   # install into Weasel and redeploy
   suites. It needs network access, and the expected candidates are Google's
   answers as of October 2026.
   - `http` checks latency, the cache, the timeout and offline recovery.
-  - `rime` runs the real engine with rime-ice in a test folder. It checks that
-    Google comes first, 繁, partial picks, offline mode and learning. The first
+  - `rime` runs the real engine with rime-ice in a test folder. It checks the
+    ranking (both `blend` and `cloud`), 繁, partial picks, the input box,
+    offline mode and learning. The first
     run compiles rime-ice, which takes about a minute.
 - **`deploy.sh`** does the following:
   1. Stops WeaselServer.
