@@ -15,6 +15,9 @@ patch:
     count: 5          # cloud candidates per request
     comment: "☁"      # marks cloud candidates; "" for none
     learn: true       # add picked cloud candidates to the user dictionary for offline use
+    rank: blend       # rank Google's and the dictionary's candidates together; "cloud" puts Google's first
+    blend_k: 2        # blend: lower favors each list's first candidates, higher favors ones both suggest
+    cloud_weight: 1   # blend: weight of Google's ranking; the dictionary's is 1
   menu/page_size: 9   # like the Windows 11 IME
   # Name the punctuation switch in the F4 menu (rime-ice shows ¥ → $).
   # Ctrl+Shift+3 toggles it.

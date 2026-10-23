@@ -35,14 +35,15 @@ check() {
   fi
 }
 
-# Change the cloud endpoint, e.g. to a host that doesn't resolve to simulate no
-# network. Run rime with "deploy" afterwards. RIME compares file times in whole
-# seconds, so an edit in the same second as the last one looks like no change:
-# wait a second first.
-set_endpoint() {
+# Set cloud_pinyin/<key> in the test folder, e.g. the endpoint to a host that
+# doesn't resolve to simulate no network. Run rime with "deploy" afterwards.
+# RIME compares file times in whole seconds, so an edit in the same second as
+# the last one looks like no change: wait a second first.
+set_cloud() {
   sleep 1
-  sed -i "/endpoint:/d; s|^  cloud_pinyin:\$|  cloud_pinyin:\n    endpoint: $1|" "$DEV/user/rime_ice.custom.yaml"
+  sed -i "/^    $1:/d; s|^  cloud_pinyin:\$|  cloud_pinyin:\n    $1: $2|" "$DEV/user/rime_ice.custom.yaml"
 }
+set_endpoint() { set_cloud endpoint "$1"; }
 GOOGLE=https://inputtools.google.com/request
 NOWHERE=https://nonexistent.invalid/request
 
@@ -72,11 +73,18 @@ rime | all)
   check "preedit: w'l'j'h" schema rime_ice type wljh show
   check "preedit: wo'men" schema rime_ice type women show
   check "preedit: xi'an" schema rime_ice type "xi'an" show
-  echo "== Google first when other translators match too (English completions of lan)"
+  echo "== Google's candidates count when other translators match too (English completions of lan)"
   check '*1. 蓝 ☁' schema rime_ice type lan show
   echo "== rime-ice's own picks stay ahead of Google: the date for rq, English for hello"
   check "*1. $(date +%Y-%m-%d)" schema rime_ice type rq show
   check '*1. hello' schema rime_ice type hello show
+  echo "== blend: what Google (2nd) and the dictionary (3rd) both suggest comes first"
+  check '*1. 王老吉 ☁' schema rime_ice type wlj show
+  echo "== rank: cloud puts Google's first"
+  set_cloud rank cloud
+  check '*1. 王立军 ☁' deploy schema rime_ice type wlj show
+  set_cloud rank blend
+  rime deploy >/dev/null
 
   echo "== offline: local only, no waiting"
   set_endpoint $NOWHERE

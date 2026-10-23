@@ -265,22 +265,115 @@ end
 -- filter, first in the chain, holds each cloud candidate back until the next
 -- dictionary candidate. Table translators' completions count as dictionary
 -- too; they rank low anyway.
+--
+-- With cloud_pinyin/rank: blend, Google's and the dictionary's candidates
+-- covering the same input are then ranked together by reciprocal rank fusion:
+-- each scores cloud_weight / (blend_k + its place in Google's list) plus
+-- 1 / (blend_k + its place in the dictionary's), so one both suggest scores
+-- twice. Ties go to Google. Only the dictionary's first `window` candidates
+-- for that input take part; the rest follow in rime-ice's order. Blending only
+-- reorders the places these candidates take, so dates, English words and
+-- custom phrases stay where they are.
 local dictionary_types = { phrase = true, user_phrase = true, sentence = true, completion = true }
+local window = 10
+
+-- slots: one input length's candidates in menu order, as { cand, kind }, kind
+-- being "cloud", "dictionary" or "other". Returns them blended.
+local function blend(slots, k, weight)
+  local ranked, by_text, places = {}, {}, { cloud = 0, dictionary = 0 }
+  for _, slot in ipairs(slots) do
+    local kind = slot.kind
+    if kind ~= "other" then
+      places[kind] = places[kind] + 1
+      local r = by_text[slot.cand.text]
+      if not r then
+        r = { cand = slot.cand, score = 0 }
+        by_text[slot.cand.text] = r
+        ranked[#ranked + 1] = r
+      end
+      if not r[kind] then
+        r[kind] = places[kind]
+        r.score = r.score + (kind == "cloud" and weight or 1) / (k + places[kind])
+        -- Show Google's when both suggest it: it has the ☁ and Google's pinyin.
+        if kind == "cloud" then r.cand = slot.cand end
+      end
+    end
+  end
+  table.sort(ranked, function(a, b)
+    if a.score ~= b.score then return a.score > b.score end
+    local ac, bc = a.cloud or math.huge, b.cloud or math.huge
+    if ac ~= bc then return ac < bc end
+    return (a.dictionary or math.huge) < (b.dictionary or math.huge)
+  end)
+  local out, n = {}, 0
+  for _, slot in ipairs(slots) do
+    if slot.kind == "other" then
+      out[#out + 1] = slot.cand
+    elseif n < #ranked then
+      n = n + 1
+      out[#out + 1] = ranked[n].cand
+    end
+  end
+  return out
+end
 
 M.filter = {}
 
-function M.filter.func(input)
-  local held = {}
+function M.filter.init(env)
+  -- The translator's settings.
+  local config = env.engine.schema.config
+  env.blend = config:get_string("cloud_pinyin/rank") == "blend"
+  env.k = config:get_double("cloud_pinyin/blend_k") or 2
+  env.weight = config:get_double("cloud_pinyin/cloud_weight") or 1
+end
+
+function M.filter.func(input, env)
+  local held = {}   -- cloud candidates waiting for the next dictionary candidate
+  local slots       -- blend: candidates for `length` input being collected
+  local length, count, blended = nil, 0, nil
   for cand in input:iter() do
-    if cand.type == "cloud" then
-      held[#held + 1] = cand
+    local kind = cand.type == "cloud" and "cloud" or dictionary_types[cand.type] and "dictionary" or "other"
+    if slots and not (kind == "dictionary" and (cand._end ~= length or count == window)) then
+      if kind == "cloud" and cand._end ~= length then
+        held[#held + 1] = cand
+      else
+        slots[#slots + 1] = { cand = cand, kind = kind }
+        if kind == "dictionary" then count = count + 1 end
+      end
     else
-      if dictionary_types[cand.type] then
+      if slots then
+        for _, c in ipairs(blend(slots, env.k, env.weight)) do yield(c) end
+        slots = nil
+      end
+      if kind == "cloud" then
+        held[#held + 1] = cand
+      elseif kind == "other" then
+        yield(cand)
+      elseif env.blend and cand._end ~= blended then
+        -- The dictionary's first candidate for this much input: blend from here.
+        length, count, blended = cand._end, 1, cand._end
+        slots = {}
+        local waiting = {}
+        for _, c in ipairs(held) do
+          if c._end > length then
+            yield(c) -- covers more input than any dictionary candidate
+          elseif c._end == length then
+            slots[#slots + 1] = { cand = c, kind = "cloud" }
+          else
+            waiting[#waiting + 1] = c
+          end
+        end
+        held = waiting
+        slots[#slots + 1] = { cand = cand, kind = "dictionary" }
+      else
         for _, c in ipairs(held) do yield(c) end
         held = {}
+        yield(cand)
       end
-      yield(cand)
     end
+  end
+  if slots then
+    for _, c in ipairs(blend(slots, env.k, env.weight)) do yield(c) end
   end
   for _, c in ipairs(held) do yield(c) end
 end
