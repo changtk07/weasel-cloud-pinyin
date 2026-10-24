@@ -42,8 +42,9 @@ What to expect (times measured on the development machine):
 - **Partial picks:** pick 我们 out of 我们去公园 and Google converts the rest.
 - **Learning:** whatever you pick is saved to your local user dictionary, so
   it comes up offline too. That includes a word neither Google nor the
-  dictionary has, built from several picks (泥 then 好 for `nihao`). Online it
-  comes after Google's candidates for the whole input; offline it's first.
+  dictionary has, built from several picks (泥 then 好 for `nihao`). Words
+  you've picked come first, online and offline, as RIME does offline. One
+  picked by mistake goes with Ctrl+Delete.
 - **繁:** Taiwan character forms (裡, 為, 著急). Vocabulary isn't changed
   (软件 → 軟件); type `ruanti` for 軟體.
 - **Mid-syllable:** Google's guess can look odd (`womenqugon` → 我们去个噢你)
@@ -91,6 +92,10 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
   twice. Ties go to Google. The dictionary's first 10 candidates for that input
   take part; the rest follow in rime-ice's order. Blending only reorders the
   places these candidates take, so other candidates stay where they are.
+- With `used_first`, words you've picked come before that, in RIME's order:
+  the user dictionary's, which holds picked Google candidates too. They're
+  shown as RIME's candidates, not Google's, because Ctrl+Delete (RIME's
+  `delete_candidate`) only removes the dictionary's.
 - 繁 conversion is rime-ice's own filter, so Google's and local candidates are
   converted the same way.
 - The input box shows only letters you typed. A Google candidate's are split
@@ -149,13 +154,14 @@ Edit `rime/rime_ice.custom.yaml`, then run `scripts/deploy.sh`.
 | `cloud_pinyin/rank` | `blend` | `blend`: rank Google's and the dictionary's candidates together. `cloud`: Google's first |
 | `cloud_pinyin/blend_k` | `2` | With `blend`: lower favors each list's first candidates, higher favors ones both suggest |
 | `cloud_pinyin/cloud_weight` | `1` | With `blend`: weight of Google's ranking against the dictionary's (1). Above 1 favors Google |
+| `cloud_pinyin/used_first` | `true` | With `blend`: words you've picked come first, as RIME does offline |
 | `cloud_pinyin/endpoint` | Google's | Request URL. The tests point it at a dead host to simulate being offline |
 | `traditionalize/opencc_config` | `s2tw.json` | 繁 conversion: `s2tw` characters only, `s2twp` adds Taiwan vocabulary; `s2t` and `s2hk` also work |
 
 The "Set to" column is what `rime/rime_ice.custom.yaml` sets. Without a line,
 the script falls back to a 200 ms timeout, 5 candidates, no marker, no
-learning and Google's candidates first (`blend_k` 2 and `cloud_weight` 1 if
-`blend` is set without them), and 繁 uses rime-ice's own `s2t` (OpenCC
+learning and Google's candidates first (`blend_k` 2, `cloud_weight` 1 and no
+`used_first` if `blend` is set without them), and 繁 uses rime-ice's own `s2t` (OpenCC
 standard forms, not Taiwan's).
 
 To stop using Google, remove the `engine/translators/@before 1` and

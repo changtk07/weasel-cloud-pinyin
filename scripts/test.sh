@@ -58,14 +58,15 @@ case "${1:-all}" in
 rime | all)
   mkdir -p "$DEV/log"
   install_rime_files "$DEV/user"
+  rm -rf "$DEV/user/rime_ice.userdb" # the test folder's: start with nothing picked
   printf 'patch:\n  schema_list:\n    - schema: rime_ice\n' >"$DEV/user/default.custom.yaml"
   set_endpoint $GOOGLE
   rime deploy >/dev/null
 
   echo "== online: Google's sentence first"
   check '*1. 我们去公园 ☁' schema rime_ice type womenqugongyuan show select 1
-  echo "== 繁 via Ctrl+Shift+4: Taiwan character forms"
-  check '*1. 我們去公園 ☁' schema rime_ice keys '{Control+Shift+dollar}' type womenqugongyuan show select 1
+  echo "== 繁 via Ctrl+Shift+4: Taiwan character forms (picked above, so RIME's: no ☁)"
+  check '*1. 我們去公園' schema rime_ice keys '{Control+Shift+dollar}' type womenqugongyuan show select 1
   echo "== partial pick, then Google for the rest"
   check '*1. 公园 ☁' schema rime_ice type womenqugongyuan select 2 show select 1
   echo "== the input box shows what you typed, split like Google's pinyin, with '"
@@ -99,14 +100,19 @@ rime | all)
   check '*1. 元神 ☁' deploy schema rime_ice type yuanshen show select 1
   set_endpoint $NOWHERE
   check '*1. 元神' deploy schema rime_ice type yuanshen show
-  echo "== learning a word neither has: 泥 ☁ + 好 ☁ online, then 泥好 is first offline"
+  echo "== used_first: online too, as RIME's candidate (no ☁), so Ctrl+Delete removes it"
   set_endpoint $GOOGLE
-  check 'commit: 泥好' deploy schema rime_ice type nihao select 6 select 1
+  check '*1. 元神' deploy schema rime_ice type yuanshen show
+  check '*1. 元神 ☁' schema rime_ice type yuanshen keys '{Control+Delete}' show
+  echo "== learning a word neither has: 泥 ☁ + 好 ☁ online, then 泥好 is first offline"
+  check 'commit: 泥好' schema rime_ice type nihao select 6 select 1
   set_endpoint $NOWHERE
   check '*1. 泥好' deploy schema rime_ice type nihao show
-  echo "== a local pick typed as an abbreviation keeps its pinyin: 未来机会 (wljh) + 奥 ☁"
+  echo "== used_first: online too, ahead of Google's 你好"
   set_endpoint $GOOGLE
-  check 'commit: 未来机会奥' deploy schema rime_ice type wljhao select 6 select 1
+  check '*1. 泥好' deploy schema rime_ice type nihao show
+  echo "== a local pick typed as an abbreviation keeps its pinyin: 未来机会 (wljh) + 奥 ☁"
+  check 'commit: 未来机会奥' schema rime_ice type wljhao select 6 select 1
   set_endpoint $NOWHERE
   check '*1. 未来机会奥' deploy schema rime_ice type weilaijihuiao show
 

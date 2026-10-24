@@ -274,16 +274,33 @@ end
 -- for that input take part; the rest follow in rime-ice's order. Blending only
 -- reorders the places these candidates take, so dates, English words and
 -- custom phrases stay where they are.
+--
+-- With used_first, words you've picked come before all that, in RIME's own
+-- order, as RIME does offline: the user dictionary's, whether Google or the
+-- dictionary first suggested them, since picked Google candidates are saved
+-- there too. They're shown as RIME's candidates, not Google's, so Ctrl+Delete
+-- can remove one picked by mistake.
 local dictionary_types = { phrase = true, user_phrase = true, sentence = true, completion = true }
 local window = 10
 
 -- slots: one input length's candidates in menu order, as { cand, kind }, kind
 -- being "cloud", "dictionary" or "other". Returns them blended.
-local function blend(slots, k, weight)
+local function blend(slots, env)
+  local k, weight = env.k, env.weight
+  local order, used = {}, {} -- the result; texts of words you've picked
+  if env.used_first then
+    for _, slot in ipairs(slots) do
+      local cand = slot.cand
+      if cand.type == "user_phrase" and not used[cand.text] then
+        used[cand.text] = true
+        order[#order + 1] = cand
+      end
+    end
+  end
   local ranked, by_text, places = {}, {}, { cloud = 0, dictionary = 0 }
   for _, slot in ipairs(slots) do
     local kind = slot.kind
-    if kind ~= "other" then
+    if kind ~= "other" and not used[slot.cand.text] then
       places[kind] = places[kind] + 1
       local r = by_text[slot.cand.text]
       if not r then
@@ -305,13 +322,14 @@ local function blend(slots, k, weight)
     if ac ~= bc then return ac < bc end
     return (a.dictionary or math.huge) < (b.dictionary or math.huge)
   end)
+  for _, r in ipairs(ranked) do order[#order + 1] = r.cand end
   local out, n = {}, 0
   for _, slot in ipairs(slots) do
     if slot.kind == "other" then
       out[#out + 1] = slot.cand
-    elseif n < #ranked then
+    elseif n < #order then
       n = n + 1
-      out[#out + 1] = ranked[n].cand
+      out[#out + 1] = order[n]
     end
   end
   return out
@@ -325,6 +343,7 @@ function M.filter.init(env)
   env.blend = config:get_string("cloud_pinyin/rank") == "blend"
   env.k = config:get_double("cloud_pinyin/blend_k") or 2
   env.weight = config:get_double("cloud_pinyin/cloud_weight") or 1
+  env.used_first = config:get_bool("cloud_pinyin/used_first") or false
 end
 
 function M.filter.func(input, env)
@@ -342,7 +361,7 @@ function M.filter.func(input, env)
       end
     else
       if slots then
-        for _, c in ipairs(blend(slots, env.k, env.weight)) do yield(c) end
+        for _, c in ipairs(blend(slots, env)) do yield(c) end
         slots = nil
       end
       if kind == "cloud" then
@@ -373,7 +392,7 @@ function M.filter.func(input, env)
     end
   end
   if slots then
-    for _, c in ipairs(blend(slots, env.k, env.weight)) do yield(c) end
+    for _, c in ipairs(blend(slots, env)) do yield(c) end
   end
   for _, c in ipairs(held) do yield(c) end
 end

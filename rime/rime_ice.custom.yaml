@@ -18,6 +18,7 @@ patch:
     rank: blend       # rank Google's and the dictionary's candidates together; "cloud" puts Google's first
     blend_k: 2        # blend: lower favors each list's first candidates, higher favors ones both suggest
     cloud_weight: 1   # blend: weight of Google's ranking; the dictionary's is 1
+    used_first: true  # blend: words you've picked come first, as RIME does offline
   menu/page_size: 9   # like the Windows 11 IME
   # Name the punctuation switch in the F4 menu (rime-ice shows ¥ → $).
   # Ctrl+Shift+3 toggles it.
