@@ -158,6 +158,14 @@ local function split(typed, annotation, delimiter)
 end
 
 local function save(env, text, code)
+  -- librime reads the user dictionary's tick (RIME's clock for how recently a
+  -- word was picked) only when it loads it and when RIME looks up as you type,
+  -- and saving writes that tick + 1. This Memory never looks up, so it would
+  -- set the clock back to when it loaded: take a fresh one, once per commit.
+  if not env.fresh then
+    env.memory = Memory(env.engine, env.engine.schema)
+    env.fresh = true
+  end
   local entry = DictEntry()
   entry.text = text
   entry.custom_code = code
@@ -188,6 +196,7 @@ local function learn(env, ctx)
   end
   if code and picks > 1 and cloud then save(env, text, code) end
   env.cloud_pinyin = {}
+  env.fresh = false
 end
 
 function M.init(env)

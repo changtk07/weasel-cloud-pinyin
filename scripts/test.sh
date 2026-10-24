@@ -21,16 +21,19 @@ rime() {
 }
 
 fails=0
-# check <exact output line> <rimetest commands...>
+# check <exact output line(s), one per line> <rimetest commands...>
 check() {
   want=$1
   shift
   out=$(rime "$@")
   printf '%s\n' "$out"
-  if printf '%s\n' "$out" | grep -qxF -- "$want"; then
-    echo "PASS: $want"
+  missing=$(printf '%s\n' "$want" | while IFS= read -r line; do
+    printf '%s\n' "$out" | grep -qxF -- "$line" || printf '%s\n' "$line"
+  done)
+  if [ -z "$missing" ]; then
+    printf '%s\n' "$want" | sed 's/^/PASS: /'
   else
-    echo "FAIL: expected line '$want'"
+    printf '%s\n' "$missing" | sed "s/.*/FAIL: expected line '&'/"
     fails=$((fails + 1))
   fi
 }
@@ -126,6 +129,15 @@ rime | all)
     type wo select 1 type ta select 1 type nihao show
   set_endpoint $GOOGLE
   check '*1. 你好 ☁' deploy schema rime_ice type nihao show
+  echo "== saving a Google pick keeps RIME's clock: 泥好, expired by 5 picks of the 的"
+  echo "   picked after it, stays expired after 元神 ☁ (it used to come back)"
+  rm -rf "$DEV/user/rime_ice.userdb"
+  set_endpoint $NOWHERE
+  check 'commit: 泥好' deploy schema rime_ice type de select 1 type nihao select 6 select 1
+  set_endpoint $GOOGLE
+  check 'commit: 元神
+*1. 你好 ☁' deploy schema rime_ice type de select 1 type de select 1 type de select 1 \
+    type de select 1 type de select 1 type yuanshen select 1 type nihao show
 
   set_cloud used_within 500
   rime deploy >/dev/null
