@@ -280,27 +280,54 @@ end
 -- dictionary first suggested them, since picked Google candidates are saved
 -- there too. They're shown as RIME's candidates, not Google's, so Ctrl+Delete
 -- can remove one picked by mistake.
+--
+-- With used_within, only words picked recently enough come first, so one
+-- picked by mistake falls back by itself. RIME keeps a decaying count per
+-- word: each pick adds 1, and every word RIME saves after it shrinks it by
+-- e^(-1/200). A word stops coming first once its count is below a single
+-- pick's after used_within saves. It's then ranked as if never picked: where
+-- the dictionary has it, or after the rest. This applies offline too, and
+-- only to words typed in full pinyin (see recent).
 local dictionary_types = { phrase = true, user_phrase = true, sentence = true, completion = true }
 local window = 10
+
+-- Whether a word from the user dictionary was picked recently enough to come
+-- first. Its weight is the log of RIME's usage score, computed as you type,
+-- plus the typed spelling's credibility: 0 when every syllable is typed in
+-- full, less for abbreviations and corrections. So only words typed in full
+-- are judged; the others keep coming first.
+local function recent(env, cand)
+  if not env.min_weight then return true end
+  local phrase = cand:to_phrase()
+  if not phrase then return true end
+  local typed = cand.preedit:gsub("[ ']", "")
+  if typed ~= table.concat(env.memory:decode(phrase.code)) then return true end
+  return phrase.entry.weight >= env.min_weight
+end
 
 -- slots: one input length's candidates in menu order, as { cand, kind }, kind
 -- being "cloud", "dictionary" or "other". Returns them blended.
 local function blend(slots, env)
   local k, weight = env.k, env.weight
   local order, used = {}, {} -- the result; texts of words you've picked
+  local expired = {}         -- slots of words picked too long ago
   if env.used_first then
     for _, slot in ipairs(slots) do
       local cand = slot.cand
       if cand.type == "user_phrase" and not used[cand.text] then
-        used[cand.text] = true
-        order[#order + 1] = cand
+        if recent(env, cand) then
+          used[cand.text] = true
+          order[#order + 1] = cand
+        else
+          expired[slot] = true
+        end
       end
     end
   end
   local ranked, by_text, places = {}, {}, { cloud = 0, dictionary = 0 }
   for _, slot in ipairs(slots) do
     local kind = slot.kind
-    if kind ~= "other" and not used[slot.cand.text] then
+    if kind ~= "other" and not used[slot.cand.text] and not expired[slot] then
       places[kind] = places[kind] + 1
       local r = by_text[slot.cand.text]
       if not r then
@@ -323,6 +350,14 @@ local function blend(slots, env)
     return (a.dictionary or math.huge) < (b.dictionary or math.huge)
   end)
   for _, r in ipairs(ranked) do order[#order + 1] = r.cand end
+  -- Expired words the dictionary or Google suggested were ranked above.
+  for _, slot in ipairs(slots) do
+    local text = slot.cand.text
+    if expired[slot] and not by_text[text] then
+      by_text[text] = true
+      order[#order + 1] = slot.cand
+    end
+  end
   local out, n = {}, 0
   for _, slot in ipairs(slots) do
     if slot.kind == "other" then
@@ -344,6 +379,18 @@ function M.filter.init(env)
   env.k = config:get_double("cloud_pinyin/blend_k") or 2
   env.weight = config:get_double("cloud_pinyin/cloud_weight") or 1
   env.used_first = config:get_bool("cloud_pinyin/used_first") or false
+  local within = config:get_int("cloud_pinyin/used_within")
+  if env.used_first and within and within > 0 then
+    env.memory = Memory(env.engine, env.engine.schema) -- to decode pinyin
+    -- The log of RIME's usage score for a single pick `within` saves ago
+    -- (librime's formula_p, before thousands of picks make total counts
+    -- matter): -6.0 for a pick just now, -8.3 for one 460 saves ago.
+    env.min_weight = math.log(0.5 * math.exp(-within / 200) * (1 - math.exp(-0.005)))
+  end
+end
+
+function M.filter.fini(env)
+  env.memory = nil
 end
 
 function M.filter.func(input, env)
