@@ -116,7 +116,18 @@ rime | all)
   set_endpoint $NOWHERE
   check '*1. 未来机会奥' deploy schema rime_ice type weilaijihuiao show
 
+  echo "== used_within 3: 泥好 (from local 泥 + 好) is first, then after 5 other picks it's"
+  echo "   ranked as if never picked, offline and online"
+  rm -rf "$DEV/user/rime_ice.userdb"
+  set_cloud used_within 3
+  check 'commit: 泥好' deploy schema rime_ice type nihao select 6 select 1
+  check '*1. 泥好' schema rime_ice type nihao show
+  check '*1. 你好' schema rime_ice type de select 1 type le select 1 type shi select 1 \
+    type wo select 1 type ta select 1 type nihao show
   set_endpoint $GOOGLE
+  check '*1. 你好 ☁' deploy schema rime_ice type nihao show
+
+  set_cloud used_within 500
   rime deploy >/dev/null
   echo "rime: $fails failed"
   [ "$fails" -eq 0 ]
