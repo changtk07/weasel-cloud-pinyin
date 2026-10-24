@@ -122,7 +122,10 @@ key ─► Weasel ─► WeaselServer ─► librime + rime-ice
   saves those. Dictionary picks get their pinyin from their syllables, not
   from what you typed, so abbreviations and corrected typos are saved
   correctly. A word with a pick that has no pinyin, such as an English word,
-  isn't saved.
+  isn't saved. Each commit that saves something uses a freshly loaded
+  `Memory`: librime reads the user dictionary's tick (its clock for how
+  recently words were picked) only on load and as RIME looks up, and saving
+  writes that tick + 1, so an old `Memory` would set the clock back.
 
 ### `src/cloudhttp.c`: the HTTP module (`cloudhttp.dll`)
 
