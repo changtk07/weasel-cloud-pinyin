@@ -95,6 +95,10 @@ rime | all)
   check '*1. 我们去公园' deploy schema rime_ice type womenqugongyuan show
   echo "== the dictionary's candidates get ' too"
   check "preedit: w'm" schema rime_ice type wm show
+  echo "== the schema menu opens with F4, not Ctrl+\` or Ctrl+Shift+\` (VS Code's terminal)"
+  check 'preedit: 「方案选单」' schema rime_ice keys '{F4}' show
+  check 'preedit: ' schema rime_ice keys '{Control+grave}' show
+  check 'preedit: ' schema rime_ice keys '{Control+Shift+grave}' show
 
   echo "== learning: pick Google's 元神 online, then it's first offline too"
   rm -rf "$DEV/user/rime_ice.userdb" # the test folder's, starts empty

@@ -31,6 +31,9 @@ install_rime_files() {
   (cd "$RIME_ICE" && cp -r cn_dicts en_dicts opencc lua custom_phrase.txt default.yaml \
     melt_eng.dict.yaml melt_eng.schema.yaml radical_pinyin.dict.yaml radical_pinyin.schema.yaml \
     rime_ice.dict.yaml rime_ice.schema.yaml symbols_caps_v.yaml symbols_v.yaml "$dest/")
+  # Leave the schema menu on F4 only: VS Code and Zed open a terminal with
+  # Ctrl+` and Ctrl+Shift+`. A switcher/hotkeys in default.custom.yaml still wins.
+  sed -i '/^ *- Control+\(Shift+\)\?grave\r\?$/d' "$dest/default.yaml"
   cp "$ROOT/rime/lua/cloud_pinyin.lua" "$dest/lua/"
   cp "$ROOT/rime/rime_ice.custom.yaml" "$ROOT/rime/weasel.custom.yaml" "$dest/"
   chmod -f u+w "$dest/lua/cloudhttp.dll" || true

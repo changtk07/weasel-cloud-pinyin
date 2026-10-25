@@ -22,7 +22,7 @@ Switch to Weasel and type pinyin. Candidates marked ☁ come from Google.
 | Space or a number key | Pick a candidate |
 | Ctrl+Shift+4 | Toggle 简/繁 in the current window |
 | Ctrl+Shift+3 | Toggle Chinese/English punctuation (中文標點/英文標點 in the F4 menu) |
-| F4 or Ctrl+` | Schema menu: choose 简/繁 here to keep it for new windows, or switch to another schema |
+| F4 | Schema menu: choose 简/繁 here to keep it for new windows, or switch to another schema |
 | Left Shift | Toggle Chinese/English (letters typed so far are committed as-is) |
 
 Weasel keeps the 简/繁 state per window. Only a choice made in the schema menu
